@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examen: Teoría de conjuntos</title>
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--ink:#16302b;--mut:#5b6f6a;--line:#cfdad6;--acc:#0f6b5c;--ok:#1b7f4b;--okbg:#e2f4ea;--bad:#b3261e;--badbg:#fbe9e7;--sel:#e4f0ff}
+@media (prefers-color-scheme:dark){:root{--bg:#10191a;--card:#18262a;--ink:#e6f0ed;--mut:#96aba5;--line:#2c4247;--acc:#5fd0b8;--ok:#6fdc9f;--okbg:#17372a;--bad:#ff8f86;--badbg:#3d1f1c;--sel:#1b3550}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Georgia,"Iowan Old Style",serif;padding:16px}
+main{max-width:720px;margin:0 auto}
+h1{font-size:1.7rem;margin:.2em 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin:14px 0}
+label{display:block;font-weight:bold;margin:12px 0 4px}
+input[type=text],input[type=number],select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button{font:inherit;padding:10px 20px;border-radius:6px;border:0;background:var(--acc);color:var(--bg);cursor:pointer;margin-top:14px}
+button:disabled{opacity:.45;cursor:default}
+button.sec{background:none;color:var(--acc);border:1px solid var(--acc)}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.meta{color:var(--mut);font-size:.9rem;display:flex;justify-content:space-between;margin-bottom:6px}
+.q{font-size:1.15rem;margin:10px 0}
+.opt{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:6px;margin:6px 0;cursor:pointer;font-weight:normal}
+.opt.on{background:var(--sel);border-color:var(--acc)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;margin:8px 0}
+.zone{min-height:90px;border:2px dashed var(--line);border-radius:8px;padding:8px;margin:8px 0}
+.zone h4{margin:0 0 6px;font-size:.95rem;color:var(--mut)}
+.chip{display:inline-block;padding:6px 12px;margin:4px;border:1px solid var(--acc);border-radius:20px;background:var(--card);cursor:grab;user-select:none}
+.chip.pick{background:var(--sel);box-shadow:0 0 0 2px var(--acc)}
+.zone.over{background:var(--sel)}
+.fb{margin-top:14px;padding:12px;border-radius:8px}
+.fb.ok{background:var(--okbg);color:var(--ok)}.fb.no{background:var(--badbg);color:var(--bad)}
+.fb p{margin:.3em 0;color:var(--ink)}
+.score{font-size:3rem;margin:0}
+.err{color:var(--bad)}
+.hide{display:none}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+
+<!-- LOGIN -->
+<section id="login" class="card">
+  <h1>Examen de teoría de conjuntos</h1>
+  <p>15 ejercicios. Recibirás retroalimentación después de cada respuesta y tu calificación al final.</p>
+  <label for="nombre">Nombre completo</label><input id="nombre" type="text" autocomplete="name">
+  <label for="mat">Matrícula o correo institucional</label><input id="mat" type="text" autocomplete="email">
+  <label for="grupo">Grupo</label><input id="grupo" type="text">
+  <p id="loginErr" class="err"></p>
+  <button id="start">Comenzar examen</button>
+</section>
+
+<!-- EXAMEN -->
+<section id="exam" class="hide">
+  <div class="meta"><span id="prog"></span><span id="who"></span></div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="card">
+    <div id="type" class="meta"></div>
+    <div id="qtext" class="q"></div>
+    <div id="body"></div>
+    <div id="fb"></div>
+    <button id="check">Comprobar</button>
+    <button id="next" class="sec hide">Siguiente</button>
+  </div>
+</section>
+
+<!-- RESULTADO -->
+<section id="result" class="hide card">
+  <p class="meta">Calificación final</p>
+  <p class="score" id="scoreTxt"></p>
+  <p id="sendStatus"></p>
+  <button id="retry" class="sec hide">Reintentar envío</button>
+  <h3>Resumen</h3>
+  <table id="summary"></table>
+</section>
+</main>
+
+<script>
+/* ============ CONFIGURACIÓN ============
+   Pega aquí la URL de tu aplicación web de Apps Script (termina en /exec) */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxeykGikArPJE8vZqHCEhym3VqOvPhWY-sWAhggB3hE0M85COIj2wQ4P9Kquo6OAES/exec";
+
+/* ============ BANCO DE PREGUNTAS ============
+   mc: una respuesta | tf: verdadero/falso | multi: varias respuestas
+   num: numérica | fill: texto corto | match: enlazar | drag: arrastrar a categorías */
+const Q = [
+ {t:"mc",q:"¿Qué notación indica correctamente que 3 es un elemento de A = {1, 2, 3}?",o:["3 ∈ A","3 ⊂ A","{3} ∈ A","3 ∉ A"],a:0,f:"∈ relaciona un elemento con un conjunto; ⊂ relaciona dos conjuntos."},
+ {t:"tf",q:"El conjunto vacío (∅) es subconjunto de todo conjunto.",a:true,f:"Verdadero: no existe ningún elemento de ∅ que no esté en el otro conjunto."},
+ {t:"num",q:"Si A tiene 4 elementos, ¿cuántos elementos tiene el conjunto potencia P(A)?",a:16,f:"|P(A)| = 2ⁿ, así que 2⁴ = 16."},
+ {t:"mc",q:"Sean A = {1, 2, 3, 4} y B = {3, 4, 5}. ¿Cuál es A ∪ B?",o:["{3, 4}","{1, 2, 3, 4, 5}","{1, 2, 5}","{1, 2, 3, 3, 4, 4, 5}"],a:1,f:"La unión reúne todos los elementos de ambos; los elementos no se repiten."},
+ {t:"fill",q:"Con A = {1, 2, 3, 4} y B = {3, 4, 5}, escribe A ∩ B (ej.: {1,2}).",a:["3,4","4,3"],f:"La intersección contiene solo los elementos comunes: {3, 4}."},
+ {t:"match",q:"Enlaza cada operación o relación con su símbolo.",p:[["Unión","∪"],["Intersección","∩"],["Subconjunto","⊆"],["Conjunto vacío","∅"]],f:"Unión ∪, intersección ∩, subconjunto ⊆ y conjunto vacío ∅."},
+ {t:"drag",q:"Arrastra cada conjunto a la categoría correcta.",b:["Finito","Infinito"],i:[["{1, 2, 3}",0],["Números naturales ℕ",1],["{x ∈ ℤ | 0 < x < 10}",0],["Números reales ℝ",1],["∅",0],["Números pares",1]],f:"∅ y los conjuntos con cantidad limitada de elementos son finitos; ℕ, ℝ y los pares no tienen fin."},
+ {t:"multi",q:"Selecciona TODOS los subconjuntos de A = {1, 2}.",o:["∅","{1}","1","{1, 2, 3}","{1, 2}"],a:[0,1,4],f:"1 es un elemento, no un conjunto; {1, 2, 3} tiene un elemento que A no tiene."},
+ {t:"tf",q:"Para cualesquiera conjuntos A y B, siempre se cumple A − B = B − A.",a:false,f:"Falso. Con A = {1, 2} y B = {2, 3}: A − B = {1} y B − A = {3}."},
+ {t:"mc",q:"Según las leyes de De Morgan, (A ∪ B)′ es igual a:",o:["A′ ∪ B′","A′ ∩ B′","A ∩ B","(A ∩ B)′"],a:1,f:"El complemento de una unión es la intersección de los complementos."},
+ {t:"num",q:"Si |A| = 12, |B| = 8 y |A ∩ B| = 5, ¿cuánto vale |A ∪ B|?",a:15,f:"|A ∪ B| = |A| + |B| − |A ∩ B| = 12 + 8 − 5 = 15."},
+ {t:"drag",q:"Sea A = {1, 2, 3}. Arrastra cada afirmación a Verdadera o Falsa.",b:["Verdadera","Falsa"],i:[["2 ∈ A",0],["{2} ⊂ A",0],["{1, 2} ∈ A",1],["∅ ⊂ A",0],["4 ∈ A",1],["{3} ∈ A",1]],f:"{1, 2} y {3} son subconjuntos de A, pero no elementos de A, por eso ∈ es falso."},
+ {t:"match",q:"Enlaza cada conjunto numérico con su descripción.",p:[["ℕ","1, 2, 3, …"],["ℤ","…, −2, −1, 0, 1, 2, …"],["ℚ","Fracciones a/b con b ≠ 0"],["ℝ","Racionales e irracionales juntos"]],f:"ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ."},
+ {t:"fill",q:"Dos conjuntos cuya intersección es el conjunto vacío se llaman…",a:["disjuntos","disjunto","ajenos","ajeno"],f:"Son conjuntos disjuntos (o ajenos): no comparten elementos."},
+ {t:"mc",q:"Si A ⊆ B y B ⊆ A, entonces:",o:["A ⊂ B de forma propia","A = B","A ∩ B = ∅","A ∪ B = ∅"],a:1,f:"La doble contención es la forma estándar de demostrar igualdad de conjuntos."}
+];
+const NAMES={mc:"Opción múltiple",tf:"Verdadero o falso",multi:"Selección múltiple",num:"Respuesta numérica",fill:"Completar",match:"Enlazar",drag:"Arrastrar y soltar"};
+
+/* ============ ESTADO ============ */
+const $=id=>document.getElementById(id);
+let cur=0,score=0,user={},log=[],t0=0,answered=false,sel=null,payload=null;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ============ LOGIN ============ */
+$("start").onclick=()=>{
+  const n=$("nombre").value.trim(),m=$("mat").value.trim(),g=$("grupo").value.trim();
+  if(n.length<5||!m||!g){$("loginErr").textContent="Completa nombre, matrícula o correo, y grupo.";return}
+  user={nombre:n,matricula:m,grupo:g};t0=Date.now();
+  $("login").classList.add("hide");$("exam").classList.remove("hide");$("who").textContent=n;
+  show();
+};
+
+/* ============ RENDER DE PREGUNTAS ============ */
+function show(){
+  const q=Q[cur];answered=false;sel=null;
+  $("prog").textContent=`Pregunta ${cur+1} de ${Q.length}`;
+  $("barfill").style.width=(cur/Q.length*100)+"%";
+  $("type").textContent=NAMES[q.t];
+  $("qtext").textContent=q.q;$("fb").innerHTML="";
+  $("check").disabled=false;$("check").classList.remove("hide");$("next").classList.add("hide");
+  const b=$("body");b.innerHTML="";
+  if(q.t==="mc"||q.t==="multi"){
+    q.o.forEach((o,i)=>{const l=document.createElement("label");l.className="opt";
+      l.innerHTML=`<input type="${q.t==="mc"?"radio":"checkbox"}" name="o" value="${i}"> <span>${esc(o)}</span>`;
+      l.onchange=()=>b.querySelectorAll(".opt").forEach(x=>x.classList.toggle("on",x.querySelector("input").checked));
+      b.appendChild(l)});
+  }else if(q.t==="tf"){
+    [["Verdadero",true],["Falso",false]].forEach(([t,v])=>{const l=document.createElement("label");l.className="opt";
+      l.innerHTML=`<input type="radio" name="o" value="${v}"> <span>${t}</span>`;
+      l.onchange=()=>b.querySelectorAll(".opt").forEach(x=>x.classList.toggle("on",x.querySelector("input").checked));
+      b.appendChild(l)});
+  }else if(q.t==="num"){b.innerHTML='<input id="ans" type="number" step="any" aria-label="Respuesta">';}
+  else if(q.t==="fill"){b.innerHTML='<input id="ans" type="text" autocomplete="off" aria-label="Respuesta">';}
+  else if(q.t==="match"){
+    const rights=shuffle(q.p.map(x=>x[1]));
+    q.p.forEach((p,i)=>{const d=document.createElement("div");d.className="row";
+      d.innerHTML=`<span>${esc(p[0])}</span><select data-i="${i}"><option value="">Elige…</option>${rights.map(r=>`<option>${esc(r)}</option>`).join("")}</select>`;
+      b.appendChild(d)});
+  }else if(q.t==="drag"){
+    const pool=document.createElement("div");pool.className="zone";pool.id="pool";pool.dataset.z="-1";
+    pool.innerHTML='<h4>Elementos (arrastra o toca y luego toca una categoría)</h4>';
+    shuffle(q.i.map((x,k)=>[x[0],k])).forEach(([t,k])=>{const c=document.createElement("span");c.className="chip";c.draggable=true;c.textContent=t;c.dataset.k=k;pool.appendChild(c)});
+    b.appendChild(pool);
+    q.b.forEach((n,i)=>{const z=document.createElement("div");z.className="zone";z.dataset.z=i;z.innerHTML=`<h4>${esc(n)}</h4>`;b.appendChild(z)});
+    b.querySelectorAll(".zone").forEach(z=>{
+      z.ondragover=e=>{e.preventDefault();z.classList.add("over")};
+      z.ondragleave=()=>z.classList.remove("over");
+      z.ondrop=e=>{e.preventDefault();z.classList.remove("over");if(answered)return;const c=b.querySelector(`.chip[data-k="${e.dataTransfer.getData("text")}"]`);if(c)z.appendChild(c)};
+      z.onclick=()=>{if(sel&&!answered){z.appendChild(sel);sel.classList.remove("pick");sel=null}};
+    });
+    b.querySelectorAll(".chip").forEach(c=>{
+      c.ondragstart=e=>e.dataTransfer.setData("text",c.dataset.k);
+      c.onclick=e=>{e.stopPropagation();if(answered)return;if(sel)sel.classList.remove("pick");sel=(sel===c)?null:c;if(sel)c.classList.add("pick")};
+    });
+  }
+}
+
+/* ============ EVALUACIÓN ============ */
+function evaluate(q){
+  const b=$("body");
+  if(q.t==="mc"){const c=b.querySelector("input:checked");if(!c)return null;return{ok:+c.value===q.a,r:q.o[+c.value]}}
+  if(q.t==="tf"){const c=b.querySelector("input:checked");if(!c)return null;return{ok:(c.value==="true")===q.a,r:c.value==="true"?"Verdadero":"Falso"}}
+  if(q.t==="multi"){const v=[...b.querySelectorAll("input:checked")].map(x=>+x.value).sort();if(!v.length)return null;
+    return{ok:JSON.stringify(v)===JSON.stringify(q.a),r:v.map(i=>q.o[i]).join("; ")}}
+  if(q.t==="num"){const v=$("ans").value;if(v==="")return null;return{ok:Math.abs(+v-q.a)<1e-9,r:v}}
+  if(q.t==="fill"){const raw=$("ans").value.trim();if(!raw)return null;
+    const n=raw.toLowerCase().replace(/[{}\s]/g,"");return{ok:q.a.includes(n),r:raw}}
+  if(q.t==="match"){const s=[...b.querySelectorAll("select")];if(s.some(x=>!x.value))return null;
+    let ok=true;s.forEach(x=>{const good=x.value===q.p[+x.dataset.i][1];ok=ok&&good;x.style.borderColor=good?"var(--ok)":"var(--bad)";x.disabled=true});
+    return{ok,r:s.map(x=>q.p[+x.dataset.i][0]+"→"+x.value).join("; ")}}
+  if(q.t==="drag"){if(b.querySelectorAll("#pool .chip").length)return null;let ok=true;const r=[];
+    b.querySelectorAll(".zone:not(#pool)").forEach(z=>z.querySelectorAll(".chip").forEach(c=>{
+      const good=q.i[+c.dataset.k][1]===+z.dataset.z;ok=ok&&good;c.style.borderColor=good?"var(--ok)":"var(--bad)";c.draggable=false;r.push(c.textContent+"→"+q.b[+z.dataset.z])}));
+    return{ok,r:r.join("; ")}}
+}
+$("check").onclick=()=>{
+  const q=Q[cur],res=evaluate(q);
+  if(!res){$("fb").innerHTML='<div class="fb no">Responde antes de comprobar.</div>';return}
+  answered=true;if(res.ok)score++;
+  log.push({n:cur+1,tipo:q.t,ok:res.ok,resp:res.r});
+  $("fb").innerHTML=`<div class="fb ${res.ok?"ok":"no"}"><strong>${res.ok?"Correcto":"Incorrecto"}</strong><p>${esc(q.f)}</p></div>`;
+  $("check").disabled=true;
+  $("body").querySelectorAll("input").forEach(i=>i.disabled=true);
+  $("next").textContent=cur===Q.length-1?"Ver calificación":"Siguiente";
+  $("next").classList.remove("hide");$("next").focus();
+};
+$("next").onclick=()=>{cur++;cur<Q.length?show():finish()};
+
+/* ============ RESULTADO Y ENVÍO ============ */
+function finish(){
+  $("exam").classList.add("hide");$("result").classList.remove("hide");
+  const pct=Math.round(score/Q.length*100);
+  $("scoreTxt").textContent=`${score} / ${Q.length} (${pct}%)`;
+  $("summary").innerHTML=log.map(l=>`<tr><td>${l.n}</td><td>${NAMES[l.tipo]}</td><td>${l.ok?"✔ Correcto":"✘ Incorrecto"}</td></tr>`).join("");
+  payload={fecha:new Date().toISOString(),...user,aciertos:score,total:Q.length,porcentaje:pct,
+    duracion_seg:Math.round((Date.now()-t0)/1000),detalle:log.map(l=>`${l.n}:${l.ok?1:0}`).join(" "),respuestas:JSON.stringify(log)};
+  send();
+}
+function send(){
+  const st=$("sendStatus");$("retry").classList.add("hide");
+  if(SCRIPT_URL.startsWith("PEGA_AQUI")){st.textContent="Envío desactivado: falta configurar SCRIPT_URL.";return}
+  st.textContent="Enviando resultados…";
+  /* Content-Type text/plain + no-cors evita la petición preflight (CORS) con Apps Script.
+     La respuesta es "opaca": no se puede leer, pero el servidor sí recibe y guarda los datos. */
+  fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)})
+    .then(()=>{st.textContent="Resultados enviados al profesor."})
+    .catch(()=>{st.innerHTML='<span class="err">No se pudo enviar. Revisa tu conexión.</span>';$("retry").classList.remove("hide")});
+}
+$("retry").onclick=send;
+</script>
+</body>
+</html>
